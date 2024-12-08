@@ -257,5 +257,300 @@
 - 分配内存
 
     - malloc()函数
+    
+        接受需要分配的字节数为参数，分配好内存后返回内存块首字节的地址，这样分配的对象是匿名的，malloc分配内存但是不会为其赋名。
 
-## 结构
+        返回的指针是指向void的通用指针，可以赋值给任意类型的指针变量而不用考虑类型匹配的问题，为了代码的可读性，可以使用强制类型转换。
+
+        如果malloc函数分配内存失败，将会返回空指针，此时可以使用exit函数退出程序。
+
+        使用malloc函数创建数组，创建数组有三种方法：
+
+        - 用常量表达式表示数组的维度，用数组名访问数组元素，可以用静态内存或者动态内存创建这种数组；
+        - 变长数组，用变量表达式来表示数组维度，用数组名访问数组元素，只能在自动内存中创建；
+        - 声明一个指针，调用malloc函数申请内存，将返回值赋给指针，使用指针访问数组，指针的存储类型可以是静态或自动的。
+
+    - free()函数
+
+        参数是malloc返回的地址，他会释放malloc分配的内存，如果malloc申请的内存一直不释放，可能会耗尽所有内存，这类问题成为内存泄漏（memory leak）。
+
+    - calloc函数
+
+        需要两个参数，第一个是所需存储单元的数量，第二个是单个存储单元的字节数，它在分配内存时会把块中所有的位都改为0。其他性质和malloc一样。
+
+- 类型限定符
+
+    变量除了用数据类型和存储类别来描述外，还有恒常性（constancy）和易变性（volatility）等性质。由类型限定符const、volatile、restrict、_Atomic进行声明。C99标准为类型限定符增加了幂等（idempotent）属性，即声明中可以多次用同一个限定符，但是只用一次，多余的会被忽略。
+
+    - const类型限定符
+
+        以const关键字声明的对象，其值不能通过赋值、递增递减来改变。常见用法如下：
+
+        1. 在指针和形参声明中使用const
+        
+            数组和指针部分已经讲过如何对指针使用const限定符。对于函数形参，因为传递到函数的参数本质上就是复制一份原始数据然后赋值给函数的局部变量，因此如果函数不需要改变参数值或者不希望函数能够改变参数值就可以使用const来声明形参，尤其是在形参是指针的时候，可以防止外部变量被函数不慎修改。
+        2. 对全局变量使用const
+
+            方法一
+            ```c
+            /* file1.c -- 定义了一些外部const变量 */
+            const double PI = 3.14159;
+            const char *MONTHS[12] = {"January", "February", "March", "April", "May","June", "July", "August", "September", "October","November", "December"};
+
+            /* file2.c -- 使用定义在file1.c中的外部const变量 */
+            extern const double PI;
+            extern const *MONTHS[];
+            ```
+
+            方法二
+            ```c
+            /* constant.h -- 定义了一些外部const变量 */
+            static const double PI = 3.14159;
+            static const char *MONTHS[12] = {"January", "February", "March", "April", "May","June", "July", "August", "September", "October","November", "December"};
+
+            /* file1.c --使用定义在别处的外部const变量*/
+            #include "constant.h" //双引号代表在本地寻找头文件
+
+            /* file2.c --使用定义在别处的外部const变量*/
+            #include "constant.h"
+            ```
+            使用头文件声明外部变量时，必须使用static声明内部链接的全局变量，因为所有用到头文件的代码文件都会复制一份头文件中的变量声明，如果不用static的话所有文件中都会有一份相同标识符的定义式声明，C语言不允许这样。使用了static其他文件就不会互相访问这些来自头文件的声明了。
+
+            虽然使用头文件声明全局变量很方便，但是会浪费内存空间。
+
+    - volatile类型限定符
+
+        表示代理（而不是变量所在的程序）可以改变该变量的值，不加这个限定符其实代理也可以改变，加上是为了告诉编译器虽然程序可能没有改变这个变量的值，但是有代理改变了变量的值，因此不要随便优化关于这个变量的代码。
+
+        可以用const和volatile同时限定一个值，表示一个程序不会改变但是代理会改变的值。两个限定符在声明时的前后顺序不重要。
+
+    - restrict类型限定符
+
+        只用于指针，表示这个指针是访问数据对象唯一且原始的方式。也是用于告诉编译器和读者该指针有这样的性质，用于代码的优化，但是实际情况如何编译器并不会去确认。
+
+        用于函数的形参声明，表示在函数体中没有其他标识符可以修改该指针指向的数据。
+
+    - _Atomic类型限定符
+
+        原子类型。用于并发编程，此处不研究。
+
+    - 旧关键字的新位置
+
+        ```c
+        //以前的风格
+        void of_month(int * const a1, int * restrict a2, int n);
+        //C99允许
+        void of_month(int a1[const], int a2[restrict], int n);
+        
+        //static的新用法：
+        //arr是一个指向数组首元素的指针，且该数组至少有20个double   元素
+        double stick(double arr[static 20]);
+        ```
+
+
+## 结构（结构布局和结构变量）
+
+- 结构声明
+    ```c
+    struct book {
+        char title[MAX_TITLE];
+        char author[MAX_AUTHOR];
+        float value;
+    };
+    //不要遗漏 “}” 后的分号。
+    ```
+    该声明并未创建实际对象，只描述了该对象由什么元素组成（有时候把结构声明成为模板），struct关键字表示后面是一个结构，它后面是一个**可选的标记**，以便后续的程序使用该标记引用该模板：`struct book library;`，如果struct后面没有标记，那么不可以使用这种方式声明结构变量。
+
+    声明可以放在函数内部，仅供函数内部使用，也可以放在函数外部，那么所有函数都可以使用。
+
+- 定义结构变量
+
+    ```C
+    //如果之前已经进行了结构声明，可以这么声明结构变量
+    struct book library;
+    //其本质是下面这种声明的简化版
+    struct book {
+        char title[MAX_TITLE];
+        char author[MAX_AUTHOR];
+        float value;
+    } library;
+    //也可以不使用结构标记，直接声明结构变量，但是没有标记的模板不能重复使用
+    struct {
+        char title[MAX_TITLE];
+        char author[MAX_AUTHOR];
+        float value;
+    } library;
+    ```
+
+- 初始化结构
+
+    与数组的初始化相似的：
+    ```C
+    struct book library = {
+        "test_name",
+        "test_author",
+        1.00
+    };
+    ```
+    各项之间用逗号分隔即可，为了提高可读性才选择每个成员占据一行。
+
+- 访问结构成员
+
+    结构成员运算符“.”，`library.title`。.title相当于library的下标。
+
+- 结构的初始化器
+
+    和数组的初始化规则一样，示例如下：
+    ```c
+    //初始化任意成员
+    struct book book_name = {.value = 1};
+
+    //按照任意顺序初始化结构成员
+    struct book book_name = {.value = 10, .author = "Tom", .title = "A_book"};
+
+    //指定初始化后面使用普通初始化，初始化的是指定初始化成员后面的成员，对特定成员的最后一次赋值才是它实际获得的值
+    struct book book_name = {.value = 10, .author = "Tom", 20};
+    //在本例中，初始化之后value的值是20
+    ```
+
+- 结构数组
+
+    声明结构数组`struct book library[MAX];`。
+    标识结构数组的成员：
+    ```c
+    library              //名叫library成员是book的结构数组
+    library[2]           //结构数组library的第3个元素
+    library[2].title     //结构数组library的第3个元素的title成员
+    library[2].title[4]  //结构数组library第3个元素的title成员的第5个字符
+    ```
+
+- 嵌套结构
+
+    ```c
+    //第一个结构
+    struct name {
+        char first_name[20];
+        char last_name[20];
+    };
+    //第二个结构
+    struct book {
+        char title[MAX_TITLE];
+        struct name author;
+        float value;
+    };
+    //定义并初始化结构变量
+    struct book library = {"book_name", {"Tom","Winter"}, 10};
+    //访问嵌套的结构成员
+    char library_author[10] = library.author.first_name;
+    ```
+
+- 指向结构的指针
+
+    ```c
+    //声明和初始化
+    struct book * book_name;
+    book_name = &library;  //结构变量名并不是结构的地址
+    
+    //用指针访问结构成员
+    book_name->title;
+    (*book_name).title;  //*运算符的优先级高于.运算符。
+    ```
+
+- 向函数传递结构
+
+    - 直接传递结构成员
+    - 形参设为指向结构的指针然后传递结构的地址，使用结构数组的函数可以用数组名作为数组的第一个结构的地址进行传参
+    - 结构可以作为形参就可以直接传递结构
+    - 可以把一个结构赋给另一个相同类型的结构，即使成员里有数组也行。因此函数可以将结构作为返回值。
+
+- 结构中的字符串数组和字符串指针
+
+    在结构中使用字符串数组，字符串储存在结构内部，使用字符串指针的话，结构内部只存储字符串的地址，因此如果在结构中使用字符串指针的话，最好只用来在程序中管理那些已经分配好存储位置的字符串，如果直接解引用字符串指针进行初始化可能会将字符串存放到不该放的位置。
+
+- 结构的复合字面量
+
+    如果只需要一个临时的结构值，可以使用复合字面量：
+    
+    `(struct book) {"book_name", "author_name", 90};`可以用于传参赋值等等，复合字面量如果在所有函数的外部那么它具有静态存储期，如果在块内就具有自动存储期。
+
+- 伸缩型数组成员
+
+    C99新增的特性，该数组不会立即存在，但是该数组可以编写任何代码，就好像他确实存在而且拥有需要的元素数目一样。
+
+    声明伸缩型数组成员：
+    
+    - 伸缩型数组成员必须是结构中的最后一个成员；
+    - 结构中必须至少有一个成员；
+    - 伸缩型数组的声明类似于普通数组，其方括号内是空的。
+    ```c
+    struct flex
+    {
+        int count;
+        double scores[];
+    };
+
+    //使用的时候不要用它来声明结构变量，而是声明一个指向结构的指针然后用malloc来分配需要的内存空间
+    struct flex * pf;
+    pf = malloc(sizeof(struct flex) + 5 * sizeof(double));
+    ```
+    一些特殊要求：
+    1. 不能用有伸缩型数组的结构进行赋值或者拷贝，实在需要拷贝，用memcpy()函数；
+    2. 不要以按值方式传递这种结构；
+    3. 带伸缩型数组的结构不能作为数组或其他结构的成员。
+
+- 匿名结构（C11）
+
+    在嵌套结构时使用匿名结构，外层结构可以直接使用内层结构的成员
+    ```c
+    struct person
+    {
+        int id;
+        struct {char first[20]; char last[20];};
+    };
+    //初始化一个person结构
+    struct person ted ={886,{"Ted","Grass"}};
+    //直接访问内层结构成员，和没有内层结构的用法是一样的。
+    puts(ted.first);
+    ```
+- 联合（union）
+
+    联合是一种数据类型，它可以在同一个内存空间中存储不同类型的数据，但是并非同时存储。
+    ```c
+    //联合的声明和结构是一样的
+    union hold {
+        int digit;
+        double big;
+        char letter;
+    };
+    //创建一个hold类型的联合变量
+    union hold fit;
+    //创建10个hold类型的联合变量组成的数组
+    union hold save[10];
+    //创建指向hold类型的联合变量的指针
+    union hold * pu;
+
+    //联合的初始化
+    union hold valA;                    //创建联合变量
+    valA.letter = 'R';                  //初始化联合变量
+    union hold valB = valA;             //用另一个联合变量进行初始化
+    union hold valC = {88};             //初始化digit
+    union hold calD = {.big = 118.3};   //联合的指定初始化器
+    ```
+
+    联合的用法：
+    ```c
+    //把23存在fit中
+    fit.digit = 23;
+    //清除原先的23，存入2.0
+    fit.big = 2.0
+    //清除2.0存入H
+    fit.letter = 'H';
+    //使用指针访问联合变量，方法和结构一样
+    union hold * pu;
+    pu = &fit;
+    x = pu->digit; //相当于x = fit.digit
+    
+    //匿名联合，用法和匿名结构相同，此处不举例了。
+    ```
+
+- 枚举类型

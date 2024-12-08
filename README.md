@@ -9,3 +9,4 @@ This is a journal for data structures and algorithm, my beginning of C language 
     - Array & Pointer
     - String & String Functions
     - Storage Classes & Memory Management
+    - Structure Variable
