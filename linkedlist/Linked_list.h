@@ -30,9 +30,9 @@ Position FindPrevious(ElementType X, List L);
 //Find the position of the previous node.查找前一个节点的位置
 void Insert(ElementType X, List L, Position P);
 //Insert a node.插入节点
-int count(List L);
+int CountElement(List L);
 //Count the number of nodes in the linked list.
-List MakeEmpty(List L);
+void MakeEmpty(List L);
 //Empty the linked list.
 void DeleteList(List L);
 //Delete the linked list.删除链表
